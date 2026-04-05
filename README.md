@@ -2,7 +2,7 @@
 
 Zybo Z7-20 + Pcam-5C 카메라를 사용한 **실시간 MNIST 손글씨 숫자 인식** FPGA 프로젝트.
 
-> **[FPGA CNN 하드웨어 설계 가이드](docs/HARDWARE_DESIGN_GUIDE_KR.md)** — 모든 VHDL 모듈의 동작 원리를 그림과 비유로 설명합니다.
+
 
 ## 시스템 구조
 
@@ -171,41 +171,7 @@ CNN inference running in hardware...
 [000001] Digit: 3  Confidence: 87%  (raw: 891/1023)
 ```
 
-## 파일 구조
 
-```
-Zybo-Z7-Pcam-MNIST-CNN/
-  src/                              -- VHDL 설계 소스 (14개)
-    image_data_pkg.vhd              -- 이미지 타입 정의
-    cnn_config_pkg.vhd              -- CNN 설정, 활성화 함수
-    cnn_data_pkg.vhd                -- 학습된 가중치 1,438개
-    cnn_row_expander.vhd            -- 행 시간 확장기
-    cnn_row_buffer.vhd              -- 컨볼루션 매트릭스 버퍼
-    cnn_convolution.vhd             -- 2D 컨볼루션 레이어
-    cnn_pooling.vhd                 -- Max Pooling 레이어
-    nn_layer.vhd                    -- Fully Connected 레이어
-    max_pooling_pre.vhd             -- 전처리 다운스케일 (448->28)
-    rgb_to_cnn.vhd                  -- RGB -> CNN 스트림 변환
-    cnn_top.vhd                     -- CNN 최상위 모듈
-    axi_stream_to_rgb_stream.vhd    -- AXI Stream -> rgb_stream 브릿지
-    cnn_result_axilite.vhd          -- CNN 결과 AXI-Lite 레지스터
-    cnn_pcam_wrapper.vhd            -- 시스템 래퍼 (브릿지 + CNN + AXI-Lite)
-  tb/                               -- 테스트벤치
-    cnn_top_tb.vhd                  -- CNN 기능 검증 (숫자 "1" 패턴)
-  sw/src/                           -- Vitis C++ 소프트웨어
-    main.cc                         -- CNN 결과 폴링 + UART 출력
-    ov5640/                         -- Pcam 카메라 드라이버
-    hdmi/                           -- HDMI 출력 드라이버
-    platform/                       -- Zynq 플랫폼 초기화
-  scripts/                          -- 자동화 스크립트
-    setup.sh                        -- 전체 빌드 원클릭 스크립트
-    package_ip.tcl                  -- CNN IP 패키징
-    integrate_cnn.tcl               -- Pcam BD에 CNN 통합
-    create_vitis.tcl                -- Vitis 프로젝트 생성
-  cnn_schematic.pdf                 -- CNN RTL 회로도
-  CNN_VHDL_MODULE_GUIDE.md          -- 모듈별 상세 설명서
-  README.md                         -- 이 문서
-```
 
 ## CNN AXI-Lite 레지스터 맵
 
@@ -217,12 +183,4 @@ Zybo-Z7-Pcam-MNIST-CNN/
 
 Base Address: Block Design Address Editor에서 자동 할당.
 
-## 원본 출처
 
-- CNN 코어: [OnSemi CNN Ultra](https://github.com/leonbeier/OnSemi_CNN_Ultra) (Leon Beier, VHDP -> VHDL 변환)
-- Pcam 데모: [Digilent Zybo-Z7 Pcam-5C](https://github.com/Digilent/Zybo-Z7/releases)
-
-## 라이선스
-
-CNN 코어: MIT License (Leon Beier, Protop Solutions UG)
-Pcam 드라이버: Digilent License
