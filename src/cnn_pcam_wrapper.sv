@@ -1,31 +1,39 @@
 //------------------------------------------------------------------------
 // CNN Pcam Wrapper - Top-Level System Wrapper (SystemVerilog)
-
-//Camera -> AXI Stream ->axi_stream_to_rgb_stream -> Raw RGB ->cnn_top (Pre-process -> Conv/Pool -> FC) -> 숫자 판별(0~9) ->cnn_result_axilite -> AXI-Lite -> ARM Processor (C code)
+// Converted from VHDL: cnn_pcam_wrapper.vhd
+//
+// [데이터 흐름]
+// Pcam Camera (AXI Stream) 
+//   -> axi_stream_to_rgb_stream (RAW RGB 추출 & 클럭 동기화)
+//   -> cnn_top (이미지 크롭, 전처리, Conv/Pool 연산, FC, Argmax)
+//   -> cnn_result_axilite (Zynq PS/ARM용 AXI-Lite 레지스터로 결과 전송)
 //------------------------------------------------------------------------
+`include "cnn_config_pkg.vh"
+`include "image_data_pkg.vh"
+
 module cnn_pcam_wrapper #(
     parameter INPUT_WIDTH  = 1280,   // Pcam 해상도 폭
     parameter INPUT_HEIGHT = 720,    // Pcam 해상도 높이
     parameter CNN_IMG_SIZE = 448,    // CNN 입력 이미지 크기
-    parameter CNN_OFFSET   = 80,     // 크롭 오프셋
+    parameter CNN_OFFSET   = 80,     // 크롭 오프셋 (X 좌표 시작점)
     parameter CNN_SIZE     = 28      // CNN 내부 처리 크기
 )(
-    // Clock and Reset
+    // Clock and Reset (150MHz)
     input  logic        aclk,
     input  logic        aresetn,
 
-    // AXI Stream input (T-tap from GammaCorrection)
+    // AXI Stream Input (From Camera/GammaCorrection)
     input  logic [23:0] s_axis_tdata,
     input  logic        s_axis_tvalid,
     output logic        s_axis_tready,
     input  logic        s_axis_tlast,
     input  logic        s_axis_tuser,
 
-    // Direct outputs (LED/debug)
+    // Direct Outputs (외부 LED 모니터링 또는 디버깅용)
     output logic [3:0]  prediction_out,
     output logic [9:0]  probability_out,
 
-    // AXI-Lite Slave (PS reads CNN results)
+    // AXI-Lite Slave Interface (Zynq PS / ARM Processor 접근용)
     input  logic [3:0]  S_AXI_ARADDR,
     input  logic        S_AXI_ARVALID,
     output logic        S_AXI_ARREADY,
@@ -46,22 +54,24 @@ module cnn_pcam_wrapper #(
 );
 
     //------------------------------------------------------------------
-    // Internal signals
+    // 내부 연결 신호 (Internal Signals)
     //------------------------------------------------------------------
+    // Bridge -> CNN 통신용 신호
     logic [7:0]  bridge_r, bridge_g, bridge_b;
     logic [10:0] bridge_column;
     logic [9:0]  bridge_row;
     logic        bridge_new_pixel;
 
+    // CNN -> AXI-Lite & Debug 통신용 신호
     logic [3:0]  prediction_int;
     logic [9:0]  probability_int;
 
-    // Direct outputs
+    // 내부 결과를 외부 출력 포트로 연결
     assign prediction_out  = prediction_int;
     assign probability_out = probability_int;
 
     //------------------------------------------------------------------
-    // Sub-module 1: AXI Stream → rgb_stream Bridge
+    // 1. 영상 스트림 브릿지 (AXI Stream -> Raw RGB)
     //------------------------------------------------------------------
     axi_stream_to_rgb_stream #(
         .INPUT_WIDTH  (INPUT_WIDTH),
@@ -74,6 +84,7 @@ module cnn_pcam_wrapper #(
         .s_axis_tready (s_axis_tready),
         .s_axis_tlast  (s_axis_tlast),
         .s_axis_tuser  (s_axis_tuser),
+        
         .o_r           (bridge_r),
         .o_g           (bridge_g),
         .o_b           (bridge_b),
@@ -83,7 +94,7 @@ module cnn_pcam_wrapper #(
     );
 
     //------------------------------------------------------------------
-    // Sub-module 2: CNN Core
+    // 2. CNN 코어 (MNIST 숫자 인식 엔진)
     //------------------------------------------------------------------
     cnn_top #(
         .INPUT_COLUMNS (CNN_IMG_SIZE),
@@ -92,22 +103,25 @@ module cnn_pcam_wrapper #(
         .CNN_COLUMNS   (CNN_SIZE),
         .CNN_ROWS      (CNN_SIZE)
     ) u_cnn (
+        // 입력 해상도(1280x720)의 비트 수(11bit/10bit)를 CNN 내부 스펙(10bit/9bit)에 맞게 잘라서(Truncate) 인가
         .i_r         (bridge_r),
         .i_g         (bridge_g),
         .i_b         (bridge_b),
         .i_column    (bridge_column[9:0]),
         .i_row       (bridge_row[8:0]),
         .i_new_pixel (bridge_new_pixel),
+        
         .prediction  (prediction_int),
         .probability (probability_int)
     );
 
     //------------------------------------------------------------------
-    // Sub-module 3: AXI-Lite Result Register
+    // 3. AXI-Lite 레지스터 인터페이스 (결과를 C언어에서 읽어갈 수 있도록 맵핑)
     //------------------------------------------------------------------
     cnn_result_axilite u_result (
         .prediction    (prediction_int),
         .probability   (probability_int),
+        
         .S_AXI_ACLK    (aclk),
         .S_AXI_ARESETN (aresetn),
         .S_AXI_ARADDR  (S_AXI_ARADDR),
