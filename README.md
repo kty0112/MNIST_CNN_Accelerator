@@ -2,31 +2,11 @@
 
 Zybo Z7-20 + Pcam-5C 카메라를 사용한 **실시간 MNIST 손글씨 숫자 인식** FPGA 프로젝트.
 
+<img width="1067" height="378" alt="image" src="https://github.com/user-attachments/assets/b593d95d-c116-43f1-aa4e-328d2b88e6e8" />
+
+<img width="2051" height="1851" alt="image" src="https://github.com/user-attachments/assets/438dfa89-fc37-4093-a19e-51d977e20c40" />
 
 
-## 시스템 구조
-
-```
-Pcam-5C (MIPI 카메라)
-    |
-    v
-[MIPI D-PHY RX] -> [MIPI CSI-2 RX] -> [BayerToRGB] -> [GammaCorrection]
-                                                              |
-                                                     [AXI Stream Broadcaster]
-                                                        |              |
-                                                        v              v
-                                                     [VDMA]     [CNN MNIST IP]
-                                                        |              |
-                                                        v              v
-                                                   HDMI 출력     AXI-Lite 레지스터
-                                                  (원본 영상)         |
-                                                                      v
-                                                               Zynq PS (ARM)
-                                                                      |
-                                                                      v
-                                                              UART 시리얼 출력
-                                                          "Digit: 3 (87%)"
-```
 
 ## CNN 아키텍처
 
@@ -62,26 +42,8 @@ Input (28x28x1)
 - HDMI 모니터 + 케이블
 - Micro-USB 케이블 (JTAG + UART)
 
-## 필요 소프트웨어
 
-- Vivado 2023.2
-- Vitis 2023.2
-- GitHub CLI (`gh`)
 
-## 빠른 시작 (자동 빌드)
-
-```bash
-git clone https://github.com/squid55/Zybo-Z7-Pcam-MNIST-CNN.git
-cd Zybo-Z7-Pcam-MNIST-CNN
-./scripts/setup.sh /path/to/vivado /path/to/xsct
-```
-
-setup.sh가 자동으로:
-1. Digilent Pcam 프로젝트 다운로드
-2. CNN IP 패키징
-3. Block Design에 CNN 통합
-4. Bitstream 생성
-5. Vitis 소프트웨어 빌드
 
 ## 수동 빌드
 
